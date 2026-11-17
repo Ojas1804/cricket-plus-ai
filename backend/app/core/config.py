@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     live_score_api_key: str = ""
     live_score_refresh_seconds: int = 60
     live_score_provider: str = "mock"
+    live_score_base_url: str = "https://api.cricapi.com/v1"
     live_poller: str = "embedded"
     analytics_cache_ttl_seconds: int = 600
     cors_origins: str = "http://localhost:5173"

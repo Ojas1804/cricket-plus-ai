@@ -5,7 +5,7 @@ services:
       POSTGRES_USER: cricket
       POSTGRES_PASSWORD: cricket
       POSTGRES_DB: cricket
-    ports: ["127.0.0.1:5432:5432"]
+    ports: ["127.0.0.1:5433:5432"]
     volumes: [pgdata:/var/lib/postgresql/data]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U cricket"]
@@ -14,7 +14,14 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports: ["127.0.0.1:6379:6379"]
+    ports: ["127.0.0.1:6380:6379"]
+
+  migrate:
+    build: ./backend
+    command: alembic upgrade head
+    env_file: .env
+    depends_on:
+      postgres: {condition: service_healthy}
 
   backend:
     build: ./backend
@@ -26,6 +33,7 @@ services:
     depends_on:
       postgres: {condition: service_healthy}
       redis: {condition: service_started}
+      migrate: {condition: service_completed_successfully}
 
   worker:
     build: ./backend
@@ -35,12 +43,14 @@ services:
     depends_on:
       postgres: {condition: service_healthy}
       redis: {condition: service_started}
+      migrate: {condition: service_completed_successfully}
 
   frontend:
     build: ./frontend
     ports: ["127.0.0.1:5173:5173"]
     environment:
-      VITE_API_BASE_URL: http://localhost:8000
+      VITE_API_BASE_URL: ""
+      API_PROXY_TARGET: http://backend:8000
     depends_on: [backend]
 
 volumes:

@@ -59,9 +59,14 @@ class LiveService:
         now = self.clock()
         ok = True
         index = self.cache.get(INDEX_KEY) or {"ids": [], "tracked": [], "last_success_at": None, "error": None}
+        provider_changed = index.get("provider") != self.provider.name
+        if provider_changed:
+            index["ids"] = []
+            index["tracked"] = []
         try:
             summaries = self._call(self.provider.list_live_matches)
-            index.update(ids=[s.match_id for s in summaries], last_success_at=_iso(now), error=None)
+            index.update(ids=[s.match_id for s in summaries], provider=self.provider.name,
+                         last_success_at=_iso(now), error=None)
         except Exception as e:
             ok = False
             index["error"] = self._error_text(e)
@@ -132,11 +137,20 @@ class LiveService:
 @lru_cache
 def get_live_service() -> LiveService:
     s = get_settings()
-    if s.live_score_provider != "mock":
-        raise ValueError(f"Live score provider '{s.live_score_provider}' is not supported; configure LIVE_SCORE_PROVIDER=mock")
-    from app.cricket.providers.mock_live import MockLiveProvider
+    if s.live_score_provider == "mock":
+        from app.cricket.providers.mock_live import MockLiveProvider
+
+        provider = MockLiveProvider()
+    elif s.live_score_provider == "cricapi":
+        if not s.live_score_api_key:
+            raise ValueError("LIVE_SCORE_API_KEY is required when LIVE_SCORE_PROVIDER=cricapi")
+        from app.cricket.providers.cricapi import CricApiProvider
+
+        provider = CricApiProvider(s.live_score_api_key, s.live_score_base_url)
+    else:
+        raise ValueError(f"Live score provider '{s.live_score_provider}' is not supported")
 
     cache, shared = build_cache(s.redis_url)
-    service = LiveService(MockLiveProvider(), cache, s.live_score_refresh_seconds, min_call_interval=0.0)
+    service = LiveService(provider, cache, s.live_score_refresh_seconds, min_call_interval=0.0)
     service.poller_active = s.live_poller == "worker" and shared
     return service

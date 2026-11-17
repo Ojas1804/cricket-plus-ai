@@ -1,6 +1,6 @@
 import { PromptResponseSchema, WidgetSpecSchema, type PromptAction, type PromptResponse, type WidgetSpec } from '../types/widget'
 
-const BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
+const BASE = import.meta.env.VITE_API_BASE_URL ?? ''
 
 async function request(path: string, init?: RequestInit): Promise<unknown> {
   const res = await fetch(`${BASE}/api/v1${path}`, { headers: { 'Content-Type': 'application/json' }, ...init })

@@ -10,7 +10,8 @@ from app.cricket.providers.base import ProviderError
 from app.cricket.providers.mock_live import DEFS, MockLiveProvider, play
 from app.live.cache import InMemoryCache, RedisCache
 from app.live.polling import next_delay
-from app.live.service import GENERIC_ERROR, LiveService
+from app.live.models import MatchSummary
+from app.live.service import GENERIC_ERROR, INDEX_KEY, LiveService
 from app.main import app
 from app.widgets.schemas import PromptRequest
 from tests.test_ai_pipeline import FakeProvider
@@ -231,6 +232,28 @@ def test_provider_error_type():
     p.fail = True
     with pytest.raises(ProviderError):
         p.get_scorecard("x")
+
+
+def test_provider_change_drops_previous_tracked_ids(env):
+    calls = []
+
+    class OtherProvider(MockLiveProvider):
+        name = "other"
+        is_mock = False
+
+        def list_live_matches(self):
+            return [MatchSummary(match_id="new-1", title="New match", format="T20", status="LIVE")]
+
+        def get_scorecard(self, match_id):
+            calls.append(match_id)
+            return play(ODI, 0, NOW).model_copy(update={"match_id": match_id})
+
+    env.service.cache.set(INDEX_KEY, {"ids": ["old-1"], "tracked": ["old-1"], "provider": "mock",
+                                    "last_success_at": None, "error": None}, 3600)
+    env.service.provider = OtherProvider(clock=env.clock)
+
+    assert env.service.refresh_all() is True
+    assert calls == ["new-1"]
 
 
 @pytest.mark.parametrize("prompt", ["Show all live international matches", "what's the live score?", "current matches in progress", "ongoing cricket matches"])

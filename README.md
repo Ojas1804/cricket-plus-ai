@@ -2,13 +2,21 @@
 
 Prompt-first, AI-powered cricket analytics workspace. See `writing-block.md` for the PRD and architecture.
 
-## Run locally
+## Run with Docker
 
     cp .env.example .env
     docker compose up --build
 
 - Frontend: http://localhost:5173
 - Backend: http://localhost:8000/docs
+- PostgreSQL is exposed on `localhost:5433` and Redis on `localhost:6380` to avoid conflicts with local services.
+  Containers still use the standard internal ports.
+- The frontend calls `/api` on the same origin; Vite proxies it to the backend, so browser CORS is not involved.
+
+Database migrations run automatically before the backend and worker start. Useful commands:
+
+    docker compose logs -f backend frontend
+    docker compose down
 
 ## Develop without Docker
 
@@ -23,11 +31,16 @@ Currently the backend returns mock widgets (Milestone 1). Historical ingestion w
 
 Ingestion is a separate command and never runs on startup. Download Cricsheet JSON (https://cricsheet.org/downloads/) into `data/raw/`.
 
-    cd backend
+With Docker Compose, migrations have already run and `data/` is mounted at `/data`:
+
+    docker compose exec backend python -m app.cricket.ingestion.cricsheet /data/raw/ipl_json.zip   # or /data/raw directory
+
+Without Docker, from `backend/`:
+
     alembic upgrade head
     python -m app.cricket.ingestion.cricsheet ../data/raw/ipl_json.zip   # or a directory of .json files
 
-With no `DATABASE_URL` set, the backend uses a local SQLite file (`data/cricket.db`). Docker Compose uses PostgreSQL.
+Without `DATABASE_URL`, the local backend uses SQLite (`data/cricket.db`). Docker Compose uses PostgreSQL.
 
 Query it through the restricted DSL: `POST /api/v1/analytics/query` (see `backend/app/analytics/query_dsl.py`).
 Cricsheet carries no venue country, so `venue_country` filters return a coverage warning until that data is added.
@@ -47,8 +60,11 @@ conceded, average score, run rate and more, with the same splits (opposition, ve
 
 ## Live cricket (Milestone 5)
 
-- Live data goes through the `LiveScoreProvider` interface and is normalized before it reaches the browser. No commercial provider is
-  configured yet, so `LIVE_SCORE_PROVIDER=mock` runs a deterministic simulator (every live widget is labelled MOCK).
+- Live data goes through the `LiveScoreProvider` interface and is normalized before it reaches the browser. Set
+  `LIVE_SCORE_PROVIDER=cricapi` with `LIVE_SCORE_API_KEY` to use CricAPI (`LIVE_SCORE_BASE_URL` is optional), or keep
+  `LIVE_SCORE_PROVIDER=mock` for the deterministic simulator (every live widget is labelled MOCK).
+- CricAPI supplies match and innings scorecards but not ball-by-ball data, so recent overs and partnerships are unavailable
+  for real matches. Check your CricAPI plan's daily quota and choose `LIVE_SCORE_REFRESH_SECONDS` accordingly.
 - The backend polls the provider about every `LIVE_SCORE_REFRESH_SECONDS` (default 60) and caches the result (Redis when reachable,
   in-process otherwise). Browsers only read the cache. Failures keep the last known score, mark it stale and back off exponentially (capped at 10 minutes).
 - `LIVE_POLLER=embedded` polls inside the API process; with Docker Compose the `worker` service polls and the API reads Redis.
