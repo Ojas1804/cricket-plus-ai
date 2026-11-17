@@ -1,0 +1,47 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: cricket
+      POSTGRES_PASSWORD: cricket
+      POSTGRES_DB: cricket
+    ports: ["127.0.0.1:5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cricket"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports: ["127.0.0.1:6379:6379"]
+
+  backend:
+    build: ./backend
+    env_file: .env
+    environment:
+      LIVE_POLLER: worker
+    ports: ["127.0.0.1:8000:8000"]
+    volumes: [./data:/data]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_started}
+
+  worker:
+    build: ./backend
+    command: python -m app.worker
+    env_file: .env
+    volumes: [./data:/data]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_started}
+
+  frontend:
+    build: ./frontend
+    ports: ["127.0.0.1:5173:5173"]
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000
+    depends_on: [backend]
+
+volumes:
+  pgdata:

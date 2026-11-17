@@ -1,0 +1,13 @@
+.env
+node_modules/
+dist/
+__pycache__/
+.pytest_cache/
+.venv/
+data/raw/*
+data/processed/*
+data/exports/*
+!data/*/.gitkeep
+*.db
+*.sqlite
+.devin/
