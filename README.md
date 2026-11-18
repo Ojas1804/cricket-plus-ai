@@ -65,6 +65,9 @@ conceded, average score, run rate and more, with the same splits (opposition, ve
   `LIVE_SCORE_PROVIDER=mock` for the deterministic simulator (every live widget is labelled MOCK).
 - CricAPI supplies match and innings scorecards but not ball-by-ball data, so recent overs and partnerships are unavailable
   for real matches. Check your CricAPI plan's daily quota and choose `LIVE_SCORE_REFRESH_SECONDS` accordingly.
+- `LIVE_SCORE_PROVIDER=cricbuzz` needs no API key. It reads Cricbuzz's unofficial match-centre JSON, which has no contract and may
+  change or be blocked, and it adds recent overs, the current partnership and the striker. Use it for personal or non-commercial
+  use and check Cricbuzz's terms. Behind a TLS-inspecting proxy, point `SSL_CERT_FILE` at your CA bundle. Playing XI is not provided.
 - The backend polls the provider about every `LIVE_SCORE_REFRESH_SECONDS` (default 60) and caches the result (Redis when reachable,
   in-process otherwise). Browsers only read the cache. Failures keep the last known score, mark it stale and back off exponentially (capped at 10 minutes).
 - `LIVE_POLLER=embedded` polls inside the API process; with Docker Compose the `worker` service polls and the API reads Redis.

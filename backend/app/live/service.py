@@ -147,6 +147,10 @@ def get_live_service() -> LiveService:
         from app.cricket.providers.cricapi import CricApiProvider
 
         provider = CricApiProvider(s.live_score_api_key, s.live_score_base_url)
+    elif s.live_score_provider == "cricbuzz":
+        from app.cricket.providers.cricbuzz import CricbuzzProvider
+
+        provider = CricbuzzProvider()
     else:
         raise ValueError(f"Live score provider '{s.live_score_provider}' is not supported")
 
