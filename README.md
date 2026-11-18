@@ -68,6 +68,13 @@ conceded, average score, run rate and more, with the same splits (opposition, ve
 - `LIVE_SCORE_PROVIDER=cricbuzz` needs no API key. It reads Cricbuzz's unofficial match-centre JSON, which has no contract and may
   change or be blocked, and it adds recent overs, the current partnership and the striker. Use it for personal or non-commercial
   use and check Cricbuzz's terms. Behind a TLS-inspecting proxy, point `SSL_CERT_FILE` at your CA bundle. Playing XI is not provided.
+- `LIVE_SCORE_PROVIDER=cricdata` reads ESPNcricinfo through the `cricdata` package (no key, no browser). It adds full scorecards,
+  did-not-bat lists and ball-by-ball over data (recent overs, striker and partnership are derived from it; Tests often lack
+  per-ball data). It is unofficial and each call takes seconds, so a refresh over many matches can take 30 seconds or more.
+  Behind a TLS-inspecting proxy set `CURL_CA_BUNDLE` to a CA bundle (it does not use `SSL_CERT_FILE`).
+- `LIVE_SCORE_PROVIDER=auto` tries cricdata, then Cricbuzz, then CricAPI (only if `LIVE_SCORE_API_KEY` is set) for match discovery
+  and routes each match back to the provider that listed it. Match ids are not translated between providers, so if a provider fails
+  to fetch one match the last known score is kept (marked stale) rather than retried elsewhere.
 - The backend polls the provider about every `LIVE_SCORE_REFRESH_SECONDS` (default 60) and caches the result (Redis when reachable,
   in-process otherwise). Browsers only read the cache. Failures keep the last known score, mark it stale and back off exponentially (capped at 10 minutes).
 - `LIVE_POLLER=embedded` polls inside the API process; with Docker Compose the `worker` service polls and the API reads Redis.

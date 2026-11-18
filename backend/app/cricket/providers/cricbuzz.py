@@ -164,6 +164,10 @@ class CricbuzzProvider:
         self._cache_seconds = cache_seconds
         self._cache: dict[str, tuple[float, Any]] = {}
 
+    @staticmethod
+    def accepts_id(match_id: str) -> bool:
+        return match_id.isdigit()
+
     def close(self) -> None:
         if self._owns_client:
             self._client.close()
