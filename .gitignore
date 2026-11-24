@@ -12,3 +12,4 @@ data/exports/*
 *.sqlite
 .devin/
 .vscode/
+.DS_Store
